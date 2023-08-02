@@ -4,7 +4,7 @@ How to run my version:
 ```bash
 mkdir Project-Cerberus
 cd Project-Cerberus
-~/.local/bin/repo init -u https://github.com/jacc-sovv/cerberus-dev-manifest -b master  
+~/.local/bin/repo init -u https://github.com/rios240/cerberus-mctp-manifest -b master  
 (In this example, repo is located in ~/.local/bin/repo. Change this to be the location of the repo program, if added to path simply do repo init ...)
 ~/.local/bin/repo sync
 cd cerberus
@@ -81,18 +81,8 @@ This will the typical method for initializing the local repository.
 ```bash
 mkdir Project-Cerberus
 cd Project-Cerberus
-~/.local/bin/repo init -u https://github.com/jacc-sovv/cerberus-dev-manifest -b master
+~/.local/bin/repo init -u https://github.com/rios240/cerberus-mctp-manifest -b master
 ~/.local/bin/repo sync
-```
-
-#### Download using SSH
-
-If an SSH connection is desired or required to retrieve the Cerberus code, the repository must be initalized in this way.
-```bash
-mkdir Project-Cerberus
-cd Project-Cerberus
-repo init -u git@github.com:Azure/Project-Cerberus-manifest.git -m default-ssh.xml -b master
-repo sync
 ```
 
 ## Source Layout
