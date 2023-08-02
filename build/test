@@ -1,5 +1,0 @@
-#!/bin/sh
-ninja
-./cerberus-linux-unit-tests
-sleep(1)
-kill $$
