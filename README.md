@@ -4,7 +4,7 @@ How to run my version:
 ```bash
 mkdir Project-Cerberus
 cd Project-Cerberus
-~/.local/bin/repo init -u https://github.com/rios240/cerberus-mctp-manifest -b master  
+~/.local/bin/repo init -u https://github.com/rios240/cerberus-mctp-manifest -b main  
 (In this example, repo is located in ~/.local/bin/repo. Change this to be the location of the repo program, if added to path simply do repo init ...)
 ~/.local/bin/repo sync
 cd cerberus
@@ -81,7 +81,7 @@ This will the typical method for initializing the local repository.
 ```bash
 mkdir Project-Cerberus
 cd Project-Cerberus
-~/.local/bin/repo init -u https://github.com/rios240/cerberus-mctp-manifest -b master
+~/.local/bin/repo init -u https://github.com/rios240/cerberus-mctp-manifest -b main
 ~/.local/bin/repo sync
 ```
 
