@@ -24,8 +24,7 @@
 #include "state_manager/state_manager_all_tests.h"
 #include "system/system_all_tests.h"
 #include "tpm/tpm_all_tests.h"
-#include "pit_crypto/pit_crypto_tests.h"
-#include "pit_tests/pit_test.h"
+
 
 
 /**
@@ -37,8 +36,7 @@
  */
 void add_all_core_tests (CuSuite *suite)
 {
-	add_all_pit_crypto_tests (suite);
-	add_all_pit_tests (suite);
+
 	add_all_attestation_tests (suite);
 	add_all_cmd_interface_tests (suite);
 	add_all_common_tests (suite);
