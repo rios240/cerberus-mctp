@@ -31,8 +31,9 @@ int socket_receive_pldm_message(uint8_t* buffer, size_t buffer_size) {
         close(sock);
         return EXIT_FAILURE;
     }
+    
+    
 
-    // Receive response from the server
     ssize_t bytes_received = recv(sock, buffer, buffer_size, 0);
     if (bytes_received < 0) {
         perror("socket recv failed");
@@ -44,3 +45,4 @@ int socket_receive_pldm_message(uint8_t* buffer, size_t buffer_size) {
 
     return bytes_received;
 }
+

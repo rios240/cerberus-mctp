@@ -21,6 +21,8 @@ static void add_all_mctp_tests (CuSuite *suite)
 	/* This is unused when no tests will be executed. */
 	UNUSED (suite);
 
+TESTING_RUN_SUITE (pldm_over_mctp_binding);
+
 #if (defined TESTING_RUN_CMD_INTERFACE_MCTP_CONTROL_SUITE || \
 		defined TESTING_RUN_ALL_TESTS || defined TESTING_RUN_ALL_CORE_TESTS || \
 		(!defined TESTING_SKIP_ALL_TESTS && !defined TESTING_SKIP_ALL_CORE_TESTS)) && \
@@ -45,12 +47,7 @@ static void add_all_mctp_tests (CuSuite *suite)
 	!defined TESTING_SKIP_MCTP_INTERFACE_SUITE
 	TESTING_RUN_SUITE (mctp_interface);
 #endif
-#if (defined TESTING_RUN_PLDM_OVER_MCTP_BINDING_SUITE || \
-		defined TESTING_RUN_ALL_TESTS || defined TESTING_RUN_ALL_CORE_TESTS || \
-		(!defined TESTING_SKIP_ALL_TESTS && !defined TESTING_SKIP_ALL_CORE_TESTS)) && \
-	!defined TESTING_SKIP_PLDM_OVER_MCTP_BINDING_SUITE
-	TESTING_RUN_SUITE (pldm_over_mctp_binding);
-#endif
+
 }
 
 

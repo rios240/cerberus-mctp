@@ -14,7 +14,8 @@ extern "C" {
 // Receive a PLDM message over the socket
 int socket_receive_pldm_message(uint8_t* buffer, size_t buffer_size);
 
-
+// Send a MCTP message over the socket
+//int socket_send_mctp_message(uint8_t* buffer, size_t buffer_size);
 
 #ifdef __cplusplus
 }

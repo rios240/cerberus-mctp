@@ -18,6 +18,7 @@
 #include "crypto/checksum.h"
 #include "testing/mock/cmd_interface/cmd_interface_mock.h"
 #include "testing/mock/cmd_interface/cmd_channel_mock.h"
+#include "i2c/mctp_i2c.h"
 
 
 TEST_SUITE_LABEL ("pldm_over_mctp_binding");
@@ -124,28 +125,6 @@ static void complete_mctp_interface_with_interface_mock_test (CuTest *test,
 	mctp_interface_deinit (&mctp->mctp);
 }
 
-/**
- * Callback function which sends an MCTP response message to process_packet
- *
- * @param expected The expectation that is being used to validate the current call on the mock.
- * @param called The context for the actual call on the mock.
- *
- * @return This function always returns 0
- */
-static intptr_t mctp_interface_testing_process_packet_callback (const struct mock_call *expected,
-	const struct mock_call *called)
-{
-	struct mctp_interface_test_callback_context *context = expected->context;
-	struct cmd_message *tx;
-	int status;
-
-	UNUSED (called);
-
-	status = mctp_interface_process_packet (&context->testing->mctp, context->rsp_packet, &tx);
-	CuAssertIntEquals (context->test, context->expected_status, status);
-
-	return 0;
-}
 
 
 /*******************
@@ -156,13 +135,16 @@ static intptr_t mctp_interface_testing_process_packet_callback (const struct moc
 static void mctp_interface_test_issue_request_no_response (CuTest *test)
 {
 	struct mctp_interface_testing mctp;
- 	uint8_t buf[6] = {0};
+ 	uint8_t buf[64] = {0};
  	uint8_t msg_buf[MCTP_BASE_PROTOCOL_MAX_MESSAGE_LEN] = {0};
 	struct cmd_packet tx_packet;
 	struct mctp_base_protocol_transport_header *header;
 	int status;
 
-	buf[0] = MCTP_BASE_PROTOCOL_MSG_TYPE_VENDOR_DEF;
+	buf[0] = MCTP_BASE_PROTOCOL_MSG_TYPE_PLDM;
+	int buf_size = socket_receive_pldm_message(buf + 1, sizeof (buf) - 1);
+	CuAssertTrue (test, (buf_size != 1));
+	buf_size++;
 
 	memset (&tx_packet, 0, sizeof (tx_packet));
 
@@ -183,8 +165,8 @@ static void mctp_interface_test_issue_request_no_response (CuTest *test)
 
 	memcpy (&tx_packet.data[7], buf, sizeof (buf));
 
-	tx_packet.data[13] = checksum_crc8 (0xAA, tx_packet.data, 13);
-	tx_packet.pkt_size = 14;
+	tx_packet.data[7 + buf_size] = checksum_crc8 (0xAA, tx_packet.data, 7 + buf_size);
+	tx_packet.pkt_size = sizeof (tx_packet.data);
 	tx_packet.state = CMD_VALID_PACKET;
 	tx_packet.dest_addr = 0x55;
 	tx_packet.timeout_valid = false;
@@ -204,3 +186,10 @@ static void mctp_interface_test_issue_request_no_response (CuTest *test)
 
 	complete_mctp_interface_with_interface_mock_test (test, &mctp);
 }
+
+
+TEST_SUITE_START (pldm_over_mctp_binding);
+
+TEST (mctp_interface_test_issue_request_no_response);
+
+TEST_SUITE_END;
