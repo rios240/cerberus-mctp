@@ -21,6 +21,7 @@ set(TARGET_NAME ${PROJECT_NAME})
 
 include (${CMAKE_CURRENT_LIST_DIR}/../../../Cerberus.cmake)
 include(Mbedtls)
+include(Libpldm)
 include(AllFeatures)
 include(Coverage)
 
@@ -43,6 +44,7 @@ find_package(OpenSSL REQUIRED)
 add_executable(
 	${TARGET_NAME}
 	${MBEDTLS_SOURCES}
+	${LIBPLDM_SOURCES}
 	${CORE_SOURCES}
 	${TESTING_SOURCES}
 	${PLATFORM_SOURCES}
@@ -52,6 +54,7 @@ target_include_directories(
 	${TARGET_NAME}
 	PRIVATE
 		${MBEDTLS_INCLUDES}
+		${LIBPLDM_INCLUDES}
 		${CORE_INCLUDES}
 		${PLATFORM_INCLUDES}
 		${TESTING_DIR}
@@ -69,6 +72,7 @@ target_compile_options(
 		-Wno-unused-parameter
 		-g -ggdb3
 	)
+
 
 target_compile_definitions(
 	${TARGET_NAME}
