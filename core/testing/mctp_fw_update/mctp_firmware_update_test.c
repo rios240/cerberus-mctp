@@ -18,12 +18,9 @@
 #include "crypto/checksum.h"
 #include "testing/mock/cmd_interface/cmd_interface_mock.h"
 #include "testing/mock/cmd_interface/cmd_channel_mock.h"
-#include "i2c/mctp_i2c.h"
-#include "logging/logging_mctp_buffers.h"
 
 
-TEST_SUITE_LABEL ("pldm_over_mctp_binding");
-
+TEST_SUITE_LABEL ("mctp_firmware_update");
 
 /**
  * Length of the MCTP header.
@@ -126,88 +123,54 @@ static void complete_mctp_interface_with_interface_mock_test (CuTest *test,
 	mctp_interface_deinit (&mctp->mctp);
 }
 
-
-
-/*******************
- * Test cases
- *******************/
-
-static void mctp_interface_test_issue_request_no_response (CuTest *test)
+/**
+ * Callback function which sends an MCTP response message to process_packet
+ *
+ * @param expected The expectation that is being used to validate the current call on the mock.
+ * @param called The context for the actual call on the mock.
+ *
+ * @return This function always returns 0
+ */
+static intptr_t mctp_interface_testing_process_packet_callback (const struct mock_call *expected,
+	const struct mock_call *called)
 {
-	struct mctp_interface_testing mctp;
- 	uint8_t buf[6] = {0};
- 	uint8_t msg_buf[MCTP_BASE_PROTOCOL_MAX_MESSAGE_LEN] = {0};
-	struct cmd_packet tx_packet;
-	struct mctp_base_protocol_transport_header *header;
+	struct mctp_interface_test_callback_context *context = expected->context;
+	struct cmd_message *tx;
 	int status;
 
-	buf[0] = MCTP_BASE_PROTOCOL_MSG_TYPE_VENDOR_DEF;
+	UNUSED (called);
 
-	memset (&tx_packet, 0, sizeof (tx_packet));
+	status = mctp_interface_process_packet (&context->testing->mctp, context->rsp_packet, &tx);
+	CuAssertIntEquals (context->test, context->expected_status, status);
 
-	header = (struct mctp_base_protocol_transport_header*) tx_packet.data;
-
-	header->cmd_code = SMBUS_CMD_CODE_MCTP;
-	header->byte_count = 11;
-	header->source_addr = 0xBB;
-	header->rsvd = 0;
-	header->header_version = 1;
-	header->destination_eid = MCTP_BASE_PROTOCOL_BMC_EID;
-	header->source_eid = MCTP_BASE_PROTOCOL_PA_ROT_CTRL_EID;
-	header->som = 1;
-	header->eom = 1;
-	header->tag_owner = MCTP_BASE_PROTOCOL_TO_REQUEST;
-	header->msg_tag = 0x00;
-	header->packet_seq = 0;
-
-	memcpy (&tx_packet.data[7], buf, sizeof (buf));
-
-	tx_packet.data[13] = checksum_crc8 (0xAA, tx_packet.data, 13);
-	tx_packet.pkt_size = 14;
-	tx_packet.state = CMD_VALID_PACKET;
-	tx_packet.dest_addr = 0x55;
-	tx_packet.timeout_valid = false;
-
-	TEST_START;
-
-	setup_mctp_interface_with_interface_mock_test (test, &mctp);
-
-	status = mock_expect (&mctp.channel.mock, mctp.channel.base.send_packet, &mctp.channel, 0,
-		MOCK_ARG_VALIDATOR (cmd_channel_mock_validate_packet, &tx_packet, sizeof (tx_packet)));
-
-	CuAssertIntEquals (test, 0, status);
-
-	status = mctp_interface_issue_request (&mctp.mctp, &mctp.channel.base, 0x55,
-		MCTP_BASE_PROTOCOL_BMC_EID, buf, sizeof (buf), msg_buf, sizeof (msg_buf), 1);
-	CuAssertIntEquals (test, MCTP_BASE_PROTOCOL_RESPONSE_TIMEOUT, status);
-
-	complete_mctp_interface_with_interface_mock_test (test, &mctp); 
-
-
-
+	return 0;
 }
 
-
-static void mctp_interface_test_issue_request_set_state_effecter_states_no_response (CuTest *test)
+/**
+ * Helper function that generates an MCTP request and calls issue_request.
+ *
+ * @param test The test framework.
+ * @param mctp The testing instances to utilize.
+ * @param context Callback context to utilize.
+ * @param issue_request_status Expected issue_request completion status.
+ * @param msg_type Message type to use in request.
+ */
+static void mctp_interface_testing_generate_and_issue_request (CuTest *test,
+	struct mctp_interface_testing *mctp, struct mctp_interface_test_callback_context *context, uint8_t *buf,
+	int issue_request_status, uint8_t msg_type)
 {
-	struct mctp_interface_testing mctp;
- 	uint8_t buf[23] = {0};
  	uint8_t msg_buf[MCTP_BASE_PROTOCOL_MAX_MESSAGE_LEN] = {0};
 	struct cmd_packet tx_packet;
-	struct mctp_base_protocol_transport_header *header;
+	struct mctp_base_protocol_transport_header *header =
+		(struct mctp_base_protocol_transport_header*) tx_packet.data;
 	int status;
 
-	buf[0] = MCTP_BASE_PROTOCOL_MSG_TYPE_PLDM;
-	int bytes_received = socket_receive_pldm_message(buf + 1, sizeof (buf) - 1);
-	CuAssertIntEquals (test, 22, bytes_received);
-	
+	buf[0] = msg_type;
 
 	memset (&tx_packet, 0, sizeof (tx_packet));
 
-	header = (struct mctp_base_protocol_transport_header*) tx_packet.data;
-
 	header->cmd_code = SMBUS_CMD_CODE_MCTP;
-	header->byte_count = mctp_protocol_packet_len(sizeof (buf)) - MCTP_BASE_PROTOCOL_SMBUS_OVERHEAD;
+	header->byte_count = mctp_protocol_packet_len (sizeof(buf)) - MCTP_BASE_PROTOCOL_SMBUS_OVERHEAD;
 	header->source_addr = 0xBB;
 	header->rsvd = 0;
 	header->header_version = 1;
@@ -222,39 +185,110 @@ static void mctp_interface_test_issue_request_set_state_effecter_states_no_respo
 	memcpy (&tx_packet.data[7], buf, sizeof (buf));
 
 	tx_packet.data[7 + sizeof (buf)] = checksum_crc8 (0xAA, tx_packet.data, 7 + sizeof (buf));
-	tx_packet.pkt_size = mctp_protocol_packet_len(sizeof (buf));
+	tx_packet.pkt_size = mctp_protocol_packet_len (sizeof(buf));
 	tx_packet.state = CMD_VALID_PACKET;
 	tx_packet.dest_addr = 0x55;
 	tx_packet.timeout_valid = false;
+
+	status = mock_expect (&mctp->channel.mock, mctp->channel.base.send_packet, &mctp->channel, 0,
+		MOCK_ARG_VALIDATOR_TMP (cmd_channel_mock_validate_packet, &tx_packet, sizeof (tx_packet)));
+	CuAssertIntEquals (test, 0, status);
+
+	status = mock_expect_external_action (&mctp->channel.mock,
+		mctp_interface_testing_process_packet_callback, context);
+	CuAssertIntEquals (test, 0, status);
+
+	status = mctp_interface_issue_request (&mctp->mctp, &mctp->channel.base, 0x55,
+		MCTP_BASE_PROTOCOL_BMC_EID, buf, sizeof (buf), msg_buf, sizeof (msg_buf), msg_type);
+	CuAssertIntEquals (test, issue_request_status, status);
+}
+
+
+/*******************
+ * Test cases
+ *******************/
+
+static void user_agent_test_send_request_update(CuTest *test) {
+	struct mctp_interface_testing mctp;
+	struct mctp_interface_test_callback_context context;
+	struct cmd_packet rx;
+	struct mctp_base_protocol_transport_header *header =
+		(struct mctp_base_protocol_transport_header*) rx.data;
+	uint8_t data[10];
+	struct cmd_interface_msg response;
+	int status;
+
+	memset (&rx, 0, sizeof (rx));
+
+	header->cmd_code = SMBUS_CMD_CODE_MCTP;
+	header->byte_count = mctp_protocol_packet_len (sizeof(data)) - MCTP_BASE_PROTOCOL_SMBUS_OVERHEAD;
+	header->source_addr = 0xAB;
+	header->rsvd = 0;
+	header->header_version = 1;
+	header->destination_eid = MCTP_BASE_PROTOCOL_PA_ROT_CTRL_EID;
+	header->source_eid = MCTP_BASE_PROTOCOL_BMC_EID;
+	header->som = 1;
+	header->eom = 1;
+	header->tag_owner = MCTP_BASE_PROTOCOL_TO_RESPONSE;
+	header->msg_tag = 0;
+	header->packet_seq = 0;
+
+	rx.data[7] = MCTP_BASE_PROTOCOL_MSG_TYPE_VENDOR_DEF;
+	rx.data[8] = 0x00;
+	rx.data[9] = 0x00;
+	rx.data[10] = 0x00;
+	rx.data[11] = 0x01;
+	rx.data[12] = 0x02;
+	rx.data[13] = 0x03;
+	rx.data[14] = 0x04;
+	rx.data[15] = 0x05;
+	rx.data[16] = 0x06;
+	rx.data[17] = checksum_crc8 (0xBA, rx.data, 17);
+	rx.pkt_size = mctp_protocol_packet_len (sizeof(data));
+	rx.dest_addr = 0x5D;
+	rx.timeout_valid = true;
+	platform_init_timeout (10, &rx.pkt_timeout);
+
+	response.data = data;
+	response.length = sizeof (data);
+	memcpy (response.data, &rx.data[7], response.length);
+	response.source_eid = MCTP_BASE_PROTOCOL_BMC_EID;
+	response.target_eid = MCTP_BASE_PROTOCOL_PA_ROT_CTRL_EID;
+	response.crypto_timeout = false;
+	response.channel_id = 0;
+	response.max_response = 0;
 
 	TEST_START;
 
 	setup_mctp_interface_with_interface_mock_test (test, &mctp);
 
-	status = mock_expect (&mctp.channel.mock, mctp.channel.base.send_packet, &mctp.channel, 0,
-		MOCK_ARG_VALIDATOR (cmd_channel_mock_validate_packet, &tx_packet, sizeof (tx_packet)));
-
+	status = mock_expect (&mctp.cmd_cerberus.mock, mctp.cmd_cerberus.base.process_response,
+		&mctp.cmd_cerberus, 0,
+		MOCK_ARG_VALIDATOR_DEEP_COPY (cmd_interface_mock_validate_request, &response,
+			sizeof (response), cmd_interface_mock_save_request, cmd_interface_mock_free_request));
 	CuAssertIntEquals (test, 0, status);
 
-	status = mctp_interface_issue_request (&mctp.mctp, &mctp.channel.base, 0x55,
-		MCTP_BASE_PROTOCOL_BMC_EID, buf, sizeof (buf), msg_buf, sizeof (msg_buf), 1);
-	CuAssertIntEquals (test, MCTP_BASE_PROTOCOL_RESPONSE_TIMEOUT, status);
+	context.expected_status = 0;
+	context.rsp_packet = &rx;
+	context.test = test;
+	context.testing = &mctp;
 
-	//uint8_t packet_buf[sizeof (tx_packet)];
-	//memcpy(packet_buf, &tx_packet, sizeof (tx_packet));
-
-	//logBufferToFile(packet_buf, msg_buf, sizeof (packet_buf), sizeof (msg_buf));
+	mctp_interface_testing_generate_and_issue_request (test, &mctp, &context, 0, pldm,
+		MCTP_BASE_PROTOCOL_MSG_TYPE_PLDM);
 
 	complete_mctp_interface_with_interface_mock_test (test, &mctp);
-
-	status = socket_send_mctp_packet(msg_buf, tx_packet.pkt_size);
-	CuAssertIntEquals (test, 0, status);
+	
 }
 
 
-TEST_SUITE_START (pldm_over_mctp_binding);
 
-TEST (mctp_interface_test_issue_request_set_state_effecter_states_no_response);
-TEST (mctp_interface_test_issue_request_no_response);
+
+
+
+
+
+TEST_SUITE_START (mctp_firmware_update);
+
+TEST (user_agent_test_send_request_update);
 
 TEST_SUITE_END;

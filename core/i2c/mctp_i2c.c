@@ -6,11 +6,12 @@
 #include <unistd.h>
 
 #include "mctp_i2c.h"
+#include "cmd_interface/cmd_channel.h"
 
 #define PORT 5600
 #define SERVER_ADDRESS "127.0.0.1"
 
-int socket_receive_pldm_message(uint8_t* buffer, size_t buffer_size) {
+int receive_mctp_message(struct cmd_channel *channel, struct cmd_packet *packet, int ms_timeout) {
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock == -1) {
         return MCTP_I2C_INIT_FAILURE;
@@ -31,7 +32,7 @@ int socket_receive_pldm_message(uint8_t* buffer, size_t buffer_size) {
     
     
 
-    ssize_t bytes_received = recv(sock, buffer, buffer_size, 0);
+    ssize_t bytes_received = recv(sock, packet->data, sizeof (packet->data), 0);
     if (bytes_received < 0) {
         close(sock);
         return MCTP_I2C_RECV_FAILURE;
@@ -39,10 +40,10 @@ int socket_receive_pldm_message(uint8_t* buffer, size_t buffer_size) {
 
     close(sock);
 
-    return bytes_received;
+    return 0;
 }
 
-int socket_send_mctp_packet(uint8_t* buffer, size_t buffer_size) {
+int send_mctp_packet(struct cmd_channel *channel, struct cmd_packet *packet) {
 
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock == -1) {
@@ -63,7 +64,7 @@ int socket_send_mctp_packet(uint8_t* buffer, size_t buffer_size) {
     }
 
 
-    if (send(sock, buffer, buffer_size, 0) < 0) {
+    if (send(sock, packet->data, sizeof (packet->data), 0) < 0) {
         close(sock);
         return MCTP_I2C_SEND_FAILURE;
     }
