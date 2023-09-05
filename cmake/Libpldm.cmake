@@ -14,6 +14,6 @@
 # --
 
 set(LIBPLDM_DIR ${CERBERUS_ROOT}/external/libpldm)
-file(GLOB LIBPLDM_SOURCES ${LIBPLDM_DIR}/*.c)
-set(LIBPLDM_INCLUDES ${LIBPLDM_DIR}/include)
+file(GLOB LIBPLDM_SOURCES ${LIBPLDM_DIR}/builddir/src/*.c)
+set(LIBPLDM_INCLUDES ${LIBPLDM_DIR}/builddir/include/libpldm)
 
