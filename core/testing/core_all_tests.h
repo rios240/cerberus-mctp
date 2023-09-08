@@ -24,6 +24,7 @@
 #include "state_manager/state_manager_all_tests.h"
 #include "system/system_all_tests.h"
 #include "tpm/tpm_all_tests.h"
+#include "pldm_fw/pldm_fw_all_tests.h"
 
 
 
@@ -37,6 +38,7 @@
 void add_all_core_tests (CuSuite *suite)
 {
 
+	add_all_pldm_fw_tests (suite);
 	add_all_mctp_tests (suite);
 	add_all_attestation_tests (suite);
 	add_all_cmd_interface_tests (suite);
