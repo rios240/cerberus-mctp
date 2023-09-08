@@ -1,33 +1,18 @@
-
-How to run my version:
+# Running Cerberus on CSU CS Machines:
 
 ```bash
 mkdir Project-Cerberus
 cd Project-Cerberus
 ~/.local/bin/repo init -u https://github.com/rios240/cerberus-mctp-manifest -b main  
-(In this example, repo is located in ~/.local/bin/repo. Change this to be the location of the repo program, if added to path simply do repo init ...)
 ~/.local/bin/repo sync
-cd cerberus
-rm -rf build
-mkdir build
-cd build
-cmake -G Ninja ../projects/linux/testing/
-ninja
+module load python/anaconda/py3.10-2023.03 
+cd cerberus-mctp
+cd external/libpldm
+meson setup builddir -Dabi=deprecated,stable,testing -Dtests=disabled && ninja -C builddir
+cd ../../bin
+./build.sh
 ./cerberus-linux-unit-tests
 ```
-
-How to run with the server:
-1) Extract the server from the tar file I sent  
-2) Run the server first, it will wait for client to connect  
-2a) If on the CSU machines, type:
-```
-module load python/bundle-3.9
-(If you don't have cryptography already installed)
-pip3 install cryptography --user
-```
-3) Run the client  
-
-
 
 # Project Cerberus
 
