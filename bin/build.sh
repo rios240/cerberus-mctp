@@ -3,7 +3,6 @@
 
 build_dir="../build"
 project_dir="../projects/linux/testing"
-bin_dir="../bin"
 
 usage() {
   echo "Usage: $0 [-d]"
@@ -45,4 +44,3 @@ cd "$build_dir"
 cmake -G Ninja "$project_dir"
 ninja
 
-cd "$bin_dir"
