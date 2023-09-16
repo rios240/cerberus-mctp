@@ -4,6 +4,9 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 #include "platform.h"
 #include "cmd_channel.h"
 #include "cmd_logging.h"
@@ -69,6 +72,51 @@ int cmd_channel_get_id (struct cmd_channel *channel)
 }
 
 /**
+ * Send a command packet over a communication channel.
+ *
+ * Returning from this function does not guarantee the packet has been fully transmitted.
+ * Depending on the channel implementation, it is possible the packet is still in flight with
+ * the data buffered in the channel driver.
+ *
+ * @param channel The channel to send a packet on.
+ * @param packet The packet to send.
+ *
+ * @return 0 if the the packet was successfully sent or an error code.
+ */
+int send_packet (struct cmd_channel *channel, struct cmd_packet *packet) {
+	const char* address = "127.0.0.1";
+	
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock == -1) {
+        return SOC_INIT_ERROR;
+    }
+
+    struct sockaddr_in server;
+    server.sin_family = AF_INET;
+    server.sin_port = htons(packet->dest_addr);
+    if (inet_pton(AF_INET, address, &(server.sin_addr)) <= 0) {
+        close(sock);
+        return SOC_IPV4_BINARY_ERROR;
+    }
+
+    if (connect(sock, (struct sockaddr*)&server, sizeof(server)) < 0) {
+        close(sock);
+        return SOC_CONNECT_ERROR;
+    }
+
+
+    if (send(sock, packet->data, sizeof (packet->data), 0) < 0) {
+        close(sock);
+        return SOC_SEND_ERROR;
+    }
+
+    
+    close(sock);
+
+    return SOC_SUCCESS;
+}
+
+/**
  * Send a sequence of packets over a command channel.  Packets will be sequentially sent until all
  * packets have been successfully trasmitted or there is an error sending a packet.  Sending cannot
  * be interrupted by a different sequence of packets.  This ensures no interleaving of different
@@ -88,6 +136,7 @@ static int cmd_channel_send_packets (struct cmd_channel *channel, struct cmd_mes
 	uint8_t *pkt_pos;
 	size_t msg_len;
 	size_t pkt_len;
+	channel->send_packet = send_packet;
 	int status = 0;
 
 	platform_mutex_lock (&channel->lock);

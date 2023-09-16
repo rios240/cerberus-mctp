@@ -29,6 +29,17 @@ enum {
 };
 
 /**
+ * TCP Error Codes.
+*/
+enum {
+	SOC_SUCCESS = 0,
+	SOC_INIT_ERROR,
+	SOC_IPV4_BINARY_ERROR,
+	SOC_CONNECT_ERROR,
+	SOC_SEND_ERROR,
+};
+
+/**
  * Information for a single command packet.
  */
 struct cmd_packet {
